@@ -1,0 +1,26 @@
+backend/src/main/resources/application.properties
+# Maven build output
+backend/target/
+
+# IDE files (optional but recommended)
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+!.env.example
+
+# Docker
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Local tooling and frontend output
+frontend/node_modules/
+frontend/dist/
+frontend/.npm-cache/
+.cache/
+artifacts/

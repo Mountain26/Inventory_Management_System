@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 
 export default function Suppliers() {
@@ -11,18 +11,25 @@ export default function Suppliers() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchSuppliers = async () => {
-    setLoading(true);
     try {
       const res = await axiosClient.get('/suppliers');
       setSuppliers(res.data);
-    } catch (e) {
+    } catch {
       setError('Failed to load suppliers');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchSuppliers(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/suppliers')]).then(res => {
+      if (!active) return;
+      setSuppliers(res[0].data);
+    }).catch(() => { if (active) setError('Failed to load suppliers'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

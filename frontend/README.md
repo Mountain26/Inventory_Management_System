@@ -1,16 +1,9 @@
-# React + Vite
+﻿# MOUNTAIN Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Giao diện React cho mua hàng và vận hành kho. Dùng Node.js 22, `npm ci`, sau đó `npm run dev`. Vite phục vụ tại localhost:5173 và proxy `/api` tới backend tại localhost:8080.
 
-Currently, two official plugins are available:
+`npm test` chạy Vitest; `npm run lint` kiểm tra ESLint; `npm run build` tạo `dist`. Bản Docker dùng Nginx và proxy cùng origin. VITE_API_BASE_URL là cấu hình build tùy chọn khi API nằm ở origin khác.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Quyền và token được kiểm tra tại backend. Kiểm tra expiry trên client và ẩn thao tác theo role chỉ hỗ trợ luồng sử dụng. Các trang tải theo route để không tải thư viện camera ở màn hình đăng nhập.
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Đọc [tài liệu BA](../docs/BUSINESS-ANALYSIS.md), [UAT](../docs/UAT.md) và [audit](../docs/AUDIT.md) để biết quy tắc và giới hạn hiện tại.

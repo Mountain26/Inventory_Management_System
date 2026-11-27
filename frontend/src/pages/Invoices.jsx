@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 
 export default function Invoices() {
@@ -16,7 +16,6 @@ export default function Invoices() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [invRes, poRes] = await Promise.all([
         axiosClient.get('/invoices'),
@@ -25,14 +24,23 @@ export default function Invoices() {
       setInvoices(invRes.data);
       // Only show POs that can be invoiced
       setPurchaseOrders(poRes.data.filter(po => ['APPROVED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(po.status)));
-    } catch (e) {
+    } catch {
       setError('Failed to load invoices');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/invoices'), axiosClient.get('/purchase-orders')]).then(res => {
+      if (!active) return;
+      setInvoices(res[0].data);
+      setPurchaseOrders(res[1].data.filter(po => ['APPROVED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(po.status)));
+    }).catch(() => { if (active) setError('Failed to load invoices'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();

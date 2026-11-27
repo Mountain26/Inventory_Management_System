@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 
 export default function CustomerPortal() {
@@ -10,11 +10,10 @@ export default function CustomerPortal() {
 
   useEffect(() => {
     const fetchProducts = async () => {
-      setLoading(true);
-      try {
+        try {
         const res = await axiosClient.get('/portal/customer/products');
         setProducts(res.data);
-      } catch (err) {
+      } catch {
         setError('Failed to load catalogue');
       } finally {
         setLoading(false);

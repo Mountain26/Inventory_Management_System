@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 
 export default function Notifications() {
@@ -8,18 +8,25 @@ export default function Notifications() {
   const [filter, setFilter] = useState('');
 
   const fetchNotifications = async () => {
-    setLoading(true);
     try {
       const res = await axiosClient.get('/notifications');
       setNotifications(res.data);
-    } catch (e) {
+    } catch {
       setError('Failed to load notifications');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchNotifications(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/notifications')]).then(res => {
+      if (!active) return;
+      setNotifications(res[0].data);
+    }).catch(() => { if (active) setError('Failed to load notifications'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const filtered = notifications.filter(n => 
     !filter || n.product?.name?.toLowerCase().includes(filter.toLowerCase())

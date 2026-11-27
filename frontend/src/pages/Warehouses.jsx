@@ -12,18 +12,25 @@ export default function Warehouses() {
   const [warehouseStocks, setWarehouseStocks] = useState({});
 
   const fetchWarehouses = async () => {
-    setLoading(true);
     try {
       const res = await axiosClient.get('/warehouses');
       setWarehouses(res.data);
-    } catch (e) {
+    } catch {
       setError('Failed to load warehouses');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchWarehouses(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/warehouses')]).then(res => {
+      if (!active) return;
+      setWarehouses(res[0].data);
+    }).catch(() => { if (active) setError('Failed to load warehouses'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const fetchStock = async (id) => {
     if (warehouseStocks[id]) return;

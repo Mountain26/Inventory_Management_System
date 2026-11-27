@@ -11,13 +11,17 @@ export default function Categories() {
     try {
       const response = await axiosClient.get('/categories');
       setCategories(response.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load categories');
     }
   };
 
   useEffect(() => {
-    fetchCategories();
+    let active = true;
+    axiosClient.get('/categories').then(response => {
+      if (active) setCategories(response.data);
+    }).catch(() => { if (active) setError('Failed to load categories'); });
+    return () => { active = false; };
   }, []);
 
   const handleCreate = async (e) => {

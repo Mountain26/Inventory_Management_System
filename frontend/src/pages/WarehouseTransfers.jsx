@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 
 export default function WarehouseTransfers() {
@@ -13,7 +13,6 @@ export default function WarehouseTransfers() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [transfersRes, whRes, prodRes] = await Promise.all([
         axiosClient.get('/warehouses/transfers'),
@@ -23,14 +22,24 @@ export default function WarehouseTransfers() {
       setTransfers(transfersRes.data);
       setWarehouses(whRes.data);
       setProducts(prodRes.data);
-    } catch (e) {
+    } catch {
       setError('Failed to load transfers');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/warehouses/transfers'), axiosClient.get('/warehouses'), axiosClient.get('/products')]).then(res => {
+      if (!active) return;
+      setTransfers(res[0].data);
+      setWarehouses(res[1].data);
+      setProducts(res[2].data);
+    }).catch(() => { if (active) setError('Failed to load transfers'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();

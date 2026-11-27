@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 import BarcodeScanner from '../components/BarcodeScanner';
 
@@ -14,7 +14,6 @@ export default function Products() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [prodRes, catRes] = await Promise.all([
         axiosClient.get('/products'),
@@ -22,14 +21,23 @@ export default function Products() {
       ]);
       setProducts(prodRes.data);
       setCategories(catRes.data);
-    } catch (err) {
+    } catch {
       setError('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/products'), axiosClient.get('/categories')]).then(res => {
+      if (!active) return;
+      setProducts(res[0].data);
+      setCategories(res[1].data);
+    }).catch(() => { if (active) setError('Failed to load data'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -89,7 +97,7 @@ export default function Products() {
           barcode: res.data.barcode || code
         });
       }
-    } catch (e) {
+    } catch {
       // Not found, just keep the barcode in form
     }
     setShowModal(true);

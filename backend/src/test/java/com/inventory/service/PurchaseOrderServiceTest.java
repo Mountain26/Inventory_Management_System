@@ -171,4 +171,32 @@ class PurchaseOrderServiceTest {
         List<PurchaseOrder> result = purchaseOrderService.getOrdersByStatus("DRAFT");
         assertThat(result).hasSize(1);
     }
+
+    @Test void receiptCannotBeEmptyOrContainNonPositiveQuantities() {
+        assertThatThrownBy(() -> purchaseOrderService.receiveItems(1L, List.of(), 1L))
+                .isInstanceOf(IllegalArgumentException.class);
+        for (Integer quantity : java.util.Arrays.asList(null, 0, -1)) {
+            assertThatThrownBy(() -> purchaseOrderService.receiveItems(1L,
+                    List.of(new PurchaseOrderService.ReceiveItemRequest(1L, quantity)), 1L))
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+        verifyNoInteractions(purchaseOrderRepository, purchaseOrderItemRepository, inventoryTransactionService);
+    }
+
+    @Test void duplicateReceiptLinesAreRejected() {
+        var line = new PurchaseOrderService.ReceiveItemRequest(1L, 1);
+        assertThatThrownBy(() -> purchaseOrderService.receiveItems(1L, List.of(line, line), 1L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Duplicate");
+        verifyNoInteractions(purchaseOrderRepository, inventoryTransactionService);
+    }
+
+    @Test void creatorCannotApproveOwnOrder() {
+        draftOrder.setStatus("PENDING_APPROVAL");
+        testUser.setRole(User.Role.MANAGER);
+        when(purchaseOrderRepository.findById(1L)).thenReturn(Optional.of(draftOrder));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        assertThatThrownBy(() -> purchaseOrderService.approvePurchaseOrder(1L, 1L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("own purchase order");
+        verify(purchaseOrderRepository, never()).save(any());
+    }
 }

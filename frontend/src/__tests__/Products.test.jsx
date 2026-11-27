@@ -1,6 +1,7 @@
-import React from 'react';
+import { describe, beforeEach, afterEach, it, expect } from 'vitest';
+
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 
@@ -15,7 +16,7 @@ vi.mock('../api/axiosClient', () => ({
 }));
 
 // Mock AuthContext
-vi.mock('../context/AuthContext', () => ({
+vi.mock('../context/auth', () => ({
   useAuth: () => ({ userRole: 'ADMIN', userEmail: 'admin@test.com', isAuthenticated: true })
 }));
 

@@ -210,6 +210,43 @@ class InventoryTransactionServiceTest {
         return user;
     }
 
+    @Test void damagedQuantityCannotBeNegative() {
+        assertThatThrownBy(() -> transactionService.requestAdjustment(1L, "DAMAGED", -5, 1L, "Damaged"))
+                .isInstanceOf(IllegalArgumentException.class);
+        verifyNoInteractions(transactionRepository, productRepository);
+    }
+
+    @Test void correctionMustReferenceOriginalMovement() {
+        when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        assertThatThrownBy(() -> transactionService.requestAdjustment(1L, "CORRECTION", 5, 1L, "Count correction"))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("reference");
+        verify(transactionRepository, never()).save(any());
+    }
+
+    @Test void requesterCannotApproveOwnAdjustment() {
+        testUser.setRole(User.Role.MANAGER);
+        when(transactionRepository.findById(1L)).thenReturn(Optional.of(pendingTransaction));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        assertThatThrownBy(() -> transactionService.approveAdjustment(1L, 1L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("own adjustment");
+        assertThat(testProduct.getCurrentQuantity()).isEqualTo(100);
+    }
+
+    @Test void manualReceiptCannotBypassPoReceiving() {
+        assertThatThrownBy(() -> transactionService.recordStockIn(1L, 5, 1L, 99L))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("PO receiving");
+        verifyNoInteractions(transactionRepository, productRepository);
+    }
+
+    @Test void inactiveProductCannotReceiveStock() {
+        testProduct.setIsActive(false);
+        when(productRepository.findById(1L)).thenReturn(Optional.of(testProduct));
+        assertThatThrownBy(() -> transactionService.recordStockIn(1L, 5, 1L, null))
+                .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Inactive");
+        verify(transactionRepository, never()).save(any());
+    }
+
     private void mockWarehouseStock() {
         Warehouse warehouse = new Warehouse();
         warehouse.setId(1L);

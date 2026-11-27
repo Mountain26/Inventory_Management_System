@@ -14,8 +14,12 @@ import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "spring.flyway.enabled=true", "spring.jpa.hibernate.ddl-auto=validate",
+        "spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver"
+})
 @Testcontainers(disabledWithoutDocker = true)
+@org.springframework.test.context.ActiveProfiles("test")
 class ProductControllerIntegrationTest {
 
     @Container
@@ -81,8 +85,7 @@ class ProductControllerIntegrationTest {
                 "/api/products/by-barcode?code=NONEXISTENT",
                 HttpMethod.GET, new HttpEntity<>(headers), String.class);
 
-        // Should return 400 bad request (product not found) or 500
-        assertThat(response.getStatusCode().is4xxClientError() || response.getStatusCode().is5xxServerError()).isTrue();
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
     @Test

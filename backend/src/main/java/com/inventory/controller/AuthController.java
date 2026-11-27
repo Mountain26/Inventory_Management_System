@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class AuthController {
 
+    @org.springframework.beans.factory.annotation.Value("${app.registration.enabled:false}")
+    private boolean publicRegistrationEnabled;
+
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
     private final JwtService jwtService;
@@ -40,6 +43,9 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<User> register(@RequestBody RegisterRequest request) {
+        if (!publicRegistrationEnabled) {
+            throw new org.springframework.security.access.AccessDeniedException("Account creation is managed by an administrator");
+        }
         User user = userService.registerUser(
                 request.getFullName(),
                 request.getEmail(),
@@ -62,6 +68,10 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        if (request.getEmail() == null || request.getPassword() == null) {
+            throw new IllegalArgumentException("Email and password are required");
+        }
+        request.setEmail(request.getEmail().trim().toLowerCase(java.util.Locale.ROOT));
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
         );

@@ -30,6 +30,7 @@ public class User {
     private String passwordHash;
 
     @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
     @Column(nullable = false, length = 20)
     private Role role;
 

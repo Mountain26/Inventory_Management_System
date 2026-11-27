@@ -5,36 +5,40 @@ export default function BarcodeScanner({ onScan, onClose }) {
   const videoRef = useRef(null);
   const [error, setError] = useState('');
   const [scanning, setScanning] = useState(false);
-  const readerRef = useRef(null);
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
-    readerRef.current = reader;
+    let active = true;
+    let controls;
 
-    reader.listVideoInputDevices()
+    BrowserMultiFormatReader.listVideoInputDevices()
       .then(devices => {
+        if (!active) return;
         if (devices.length === 0) {
           setError('No camera found');
           return;
         }
         setScanning(true);
         const deviceId = devices[0].deviceId;
-        reader.decodeFromVideoDevice(deviceId, videoRef.current, (result, err) => {
-          if (result) {
+        return reader.decodeFromVideoDevice(deviceId, videoRef.current, (result, error, scannerControls) => {
+          if (result && active) {
+            scannerControls.stop();
             onScan(result.getText());
-            reader.reset();
           }
-          if (err && !(err.name === 'NotFoundException')) {
-            // NotFoundException is normal (no barcode in frame yet)
+          if (error && error.name !== 'NotFoundException' && active) {
+            setError('Could not read barcode. Adjust the camera or enter the product manually.');
           }
         });
       })
-      .catch(e => setError('Camera access denied: ' + e.message));
+      .then(scannerControls => {
+        controls = scannerControls;
+        if (!active) controls?.stop();
+      })
+      .catch(error => { if (active) setError('Camera access denied: ' + error.message); });
 
     return () => {
-      if (readerRef.current) {
-        try { readerRef.current.reset(); } catch {}
-      }
+      active = false;
+      controls?.stop();
     };
   }, [onScan]);
 
@@ -43,7 +47,7 @@ export default function BarcodeScanner({ onScan, onClose }) {
       <div className="bg-white rounded-xl p-6 max-w-md w-full">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-semibold">Scan Barcode</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+          <button aria-label="Close scanner" onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
         </div>
         {error && <p className="text-red-600 mb-3">{error}</p>}
         {scanning && <p className="text-gray-500 text-sm mb-2">Point camera at barcode...</p>}

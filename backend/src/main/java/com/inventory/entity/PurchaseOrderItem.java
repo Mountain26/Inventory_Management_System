@@ -46,6 +46,10 @@ public class PurchaseOrderItem {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Version
+    @Column(nullable = false)
+    private Integer version = 0;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

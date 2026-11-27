@@ -49,7 +49,7 @@ public class WarehouseService {
         if (Boolean.TRUE.equals(warehouse.getIsDefault())) {
             warehouseRepository.findByIsDefaultTrue().ifPresent(w -> {
                 w.setIsDefault(false);
-                warehouseRepository.save(w);
+                warehouseRepository.saveAndFlush(w);
             });
         }
         return warehouseRepository.save(warehouse);
@@ -74,7 +74,7 @@ public class WarehouseService {
         if (Boolean.TRUE.equals(data.getIsDefault()) && !Boolean.TRUE.equals(existing.getIsDefault())) {
             warehouseRepository.findByIsDefaultTrue().ifPresent(w -> {
                 w.setIsDefault(false);
-                warehouseRepository.save(w);
+                warehouseRepository.saveAndFlush(w);
             });
             existing.setIsDefault(true);
         }

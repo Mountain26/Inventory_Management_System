@@ -42,11 +42,13 @@ Các commit mới dùng danh tính Git đã cấu hình của người thực hi
 
 Backend có kiểm thử service và kiểm thử tích hợp H2 với transaction thật. Các ca tích hợp kiểm tra nhận từng phần, rollback nhiều dòng, sửa sai có liên kết, chặn áp dụng lặp, chuyển kho, phân quyền, báo cáo NCC và cạnh tranh khi xuất kho. Bài kiểm tra MySQL dùng Testcontainers và cấu hình Flyway + Hibernate validate; cần Docker đang chạy.
 
-Kết quả ngày 27/11/2026: 68 bài backend và 18 bài frontend qua; 4 bài MySQL bị bỏ qua vì Docker chưa sẵn sàng. Frontend có kiểm thử đăng nhập, hết phiên, payload điều chỉnh, thao tác duyệt, sản phẩm và vòng đời camera. Lint và build qua, được dùng làm điều kiện CI.
+Kết quả cập nhật ngày 27/11/2026: 72 bài backend và 18 bài frontend qua. Bốn bài API MySQL đã chạy trên MySQL 8.0.44 trong database thử nghiệm riêng; Flyway áp dụng thành công cả 7 migrations và Hibernate validate schema. Frontend có kiểm thử đăng nhập, hết phiên, payload điều chỉnh, thao tác duyệt, sản phẩm và vòng đời camera. Lint và build qua, được dùng làm điều kiện CI.
 
 Chrome headless đã hiển thị màn hình đăng nhập ở 1440px và 390px, luồng tồn kho ở 1440px và 1024px, PO và báo cáo NCC ở 1440px bằng API fixture. Kiểm tra ảnh phát hiện và sửa form tồn kho tràn chiều ngang ở 1024px. Dữ liệu fixture chỉ kiểm tra hiển thị; chưa thay thế E2E với backend MySQL hoặc thử camera thật.
 
-Migrations MySQL và Docker Compose chưa được kiểm chứng runtime trên máy này vì Docker engine không sẵn sàng. H2 không xác nhận được cú pháp migration, khóa và ràng buộc đặc thù MySQL. Khi dùng database đã có schema cũ phải lập migration nâng cấp riêng và đối chiếu trước; không chạy lại các script V1/V2 đã sửa trên database có Flyway history cũ hoặc tự động repair checksum.
+Lần chạy CI đầu phát hiện biến SPRING_DATASOURCE_URL của MySQL ghi đè cấu hình H2, làm 13 bài không khởi động được. Cấu hình H2 nay được cố định tại bộ kiểm thử; các bài MySQL nhận MYSQL_TEST_URL, MYSQL_TEST_USERNAME và MYSQL_TEST_PASSWORD riêng. GitHub Actions dùng dịch vụ MySQL đã khai báo trong workflow; máy phát triển có thể dùng database thử nghiệm riêng hoặc Testcontainers khi Docker tương thích. Kiểm chứng cục bộ đã lặp lại các biến môi trường gây lỗi cũ và chạy đủ 72 bài thành công.
+
+Docker Compose chưa được kiểm chứng runtime trên máy này vì Docker engine không sẵn sàng. H2 không xác nhận được cú pháp migration, khóa và ràng buộc đặc thù MySQL. Khi dùng database đã có schema cũ phải lập migration nâng cấp riêng và đối chiếu trước; không chạy lại các script V1/V2 đã sửa trên database có Flyway history cũ hoặc tự động repair checksum.
 
 ## Phần cần phát triển tiếp
 

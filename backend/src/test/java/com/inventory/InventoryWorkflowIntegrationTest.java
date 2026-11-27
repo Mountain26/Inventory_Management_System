@@ -20,7 +20,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /** Exercises real transactions and version checks in H2; MySQL migrations have a separate smoke test. */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.datasource.url=jdbc:h2:mem:mountain-workflow-test;MODE=MySQL;DB_CLOSE_DELAY=-1;NON_KEYWORDS=USER",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.datasource.username=sa", "spring.datasource.password=",
+        "spring.flyway.enabled=false", "spring.jpa.hibernate.ddl-auto=create-drop"
+})
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 class InventoryWorkflowIntegrationTest {

@@ -42,6 +42,8 @@ Tạo một Admin, một Manager khác người tạo chứng từ và một Sta
 
 ## Cách chạy và ghi kết quả
 
-Chạy `mvn test -B` trong `backend` và `npm test`, `npm run lint`, `npm run build` trong `frontend`. `InventoryWorkflowIntegrationTest` chạy database H2 và transaction thật, gồm kiểm tra cạnh tranh đồng thời. `ProductControllerIntegrationTest` khởi tạo MySQL 8 bằng Testcontainers, chạy Flyway và Hibernate validate; cần Docker.
+Chạy `mvn test -B` trong `backend` và `npm test`, `npm run lint`, `npm run build` trong `frontend`. `InventoryWorkflowIntegrationTest` cố định database H2 và transaction thật, gồm kiểm tra cạnh tranh đồng thời, để các biến datasource bên ngoài không ghi đè vào database thử nghiệm.
+
+`ProductControllerIntegrationTest` chạy MySQL, Flyway và Hibernate validate. Trên CI, nó dùng dịch vụ MySQL của workflow qua MYSQL_TEST_URL, MYSQL_TEST_USERNAME và MYSQL_TEST_PASSWORD. Có thể đặt ba biến này tới một database thử nghiệm riêng trên máy phát triển để chạy đủ bộ kiểm thử mà không cần Docker. Khi không đặt MYSQL_TEST_URL, bộ kiểm thử thử khởi tạo MySQL 8 bằng Testcontainers và chỉ chạy nếu Docker sẵn sàng. Lần kiểm chứng trên MySQL 8.0.44 ngày 27/11/2026 có 72 bài backend qua, không có bài bị bỏ qua.
 
 Khi kiểm tra thủ công, ghi ngày chạy, người chạy, dữ liệu đầu vào, actual result, ảnh hoặc response API và mã lỗi nếu có. Không đánh dấu một ca Passed chỉ vì đã viết kịch bản. Để nghiệm thu đầy đủ cần chạy MySQL migrations trên database trống, kiểm tra quyền bằng từng role và hoàn tất các ca thủ công còn lại.

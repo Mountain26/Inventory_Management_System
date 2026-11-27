@@ -50,9 +50,9 @@ jobs:
       - name: Run tests
         working-directory: backend
         env:
-          SPRING_DATASOURCE_URL: jdbc:mysql://localhost:3306/ims_test?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
-          SPRING_DATASOURCE_USERNAME: ims_test
-          SPRING_DATASOURCE_PASSWORD: ims_test
+          MYSQL_TEST_URL: jdbc:mysql://localhost:3306/ims_test?useSSL=false&allowPublicKeyRetrieval=true
+          MYSQL_TEST_USERNAME: ims_test
+          MYSQL_TEST_PASSWORD: ims_test
           JWT_SECRET: test-secret-key-for-ci-pipeline-do-not-use-in-production
         run: mvn test -B
 

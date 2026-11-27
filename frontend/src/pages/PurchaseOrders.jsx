@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
+import { useAuth } from '../context/auth';
 
 export default function PurchaseOrders() {
+  const { userRole, userEmail } = useAuth();
+  const canManage = ['ADMIN', 'MANAGER'].includes(userRole);
   const [pos, setPos] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -23,7 +26,6 @@ export default function PurchaseOrders() {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async () => {
-    setLoading(true);
     try {
       const [poRes, supRes, prodRes] = await Promise.all([
         axiosClient.get('/purchase-orders'),
@@ -33,22 +35,34 @@ export default function PurchaseOrders() {
       setPos(poRes.data);
       setSuppliers(supRes.data);
       setProducts(prodRes.data);
-    } catch (e) {
+    } catch {
       setError('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchData(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/purchase-orders'), axiosClient.get('/suppliers'), axiosClient.get('/products')]).then(res => {
+      if (!active) return;
+      setPos(res[0].data);
+      setSuppliers(res[1].data);
+      setProducts(res[2].data);
+    }).catch(() => { if (active) setError('Failed to load data'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
-  const fetchItems = async (id) => {
-    if (poItems[id]) return;
+  const fetchItems = async (id, refresh = false) => {
+    if (poItems[id] && !refresh) return poItems[id];
     try {
       const res = await axiosClient.get(`/purchase-orders/${id}/items`);
       setPoItems(prev => ({ ...prev, [id]: res.data }));
+      return res.data;
     } catch {
-      setPoItems(prev => ({ ...prev, [id]: [] }));
+      setError('Could not load purchase order lines. Try opening the order again.');
+      return null;
     }
   };
 
@@ -62,7 +76,7 @@ export default function PurchaseOrders() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const payload = { ...form, supplierId: Number(form.supplierId) };
+      const payload = { ...form, supplierId: Number(form.supplierId), items: form.items.map(item => ({ ...item, productId: Number(item.productId) })) };
       await axiosClient.post('/purchase-orders', payload);
       setShowModal(false);
       setForm({ supplierId: '', notes: '', items: [] });
@@ -75,6 +89,9 @@ export default function PurchaseOrders() {
   };
 
   const handleAction = async (id, action, payload = {}) => {
+    if (submitting) return;
+    setSubmitting(true);
+    setError('');
     try {
       if (action === 'submit') await axiosClient.post(`/purchase-orders/${id}/submit`);
       else if (action === 'approve') await axiosClient.patch(`/purchase-orders/${id}/approve`);
@@ -93,6 +110,8 @@ export default function PurchaseOrders() {
       }
     } catch (err) {
       setError(err.response?.data?.message || `Failed to ${action} PO`);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -112,8 +131,8 @@ export default function PurchaseOrders() {
 
   const openReceiveModal = async (po) => {
     setSelectedPo(po);
-    await fetchItems(po.id);
-    const items = poItems[po.id] || [];
+    const items = await fetchItems(po.id, true);
+    if (!items) return;
     const initForm = {};
     items.forEach(i => { initForm[i.id] = 0; });
     setReceiveForm(initForm);
@@ -138,10 +157,10 @@ export default function PurchaseOrders() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Purchase Orders</h1>
-        <button onClick={() => setShowModal(true)}
+        {canManage && <button onClick={() => setShowModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors">
           + New PO
-        </button>
+        </button>}
       </div>
 
       <div className="mb-4 flex gap-2 overflow-x-auto pb-2">
@@ -179,15 +198,15 @@ export default function PurchaseOrders() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">{new Date(p.createdAt).toLocaleDateString()}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-gray-800">${p.totalAmount?.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-800">{poItems[p.id] ? `$${poItems[p.id].reduce((sum, item) => sum + Number(item.unitPrice) * item.quantityOrdered, 0).toFixed(2)}` : 'Expand to view'}</td>
                     <td className="px-4 py-3 text-sm" onClick={e => e.stopPropagation()}>
                       <div className="flex gap-2">
-                        {p.status === 'DRAFT' && (
-                          <button onClick={() => handleAction(p.id, 'submit')} className="text-blue-600 hover:text-blue-900 font-medium">Submit</button>
+                        {canManage && p.status === 'DRAFT' && (
+                          <button disabled={submitting} onClick={() => handleAction(p.id, 'submit')} className="text-blue-600 hover:text-blue-900 font-medium">Submit</button>
                         )}
-                        {p.status === 'PENDING_APPROVAL' && (
+                        {canManage && p.status === 'PENDING_APPROVAL' && p.createdBy?.email !== userEmail && (
                           <>
-                            <button onClick={() => handleAction(p.id, 'approve')} className="text-green-600 hover:text-green-900 font-medium">Approve</button>
+                            <button disabled={submitting} onClick={() => handleAction(p.id, 'approve')} className="text-green-600 hover:text-green-900 font-medium">Approve</button>
                             <button onClick={() => { setSelectedPo(p); setShowRejectModal(true); }} className="text-red-600 hover:text-red-900 font-medium">Reject</button>
                           </>
                         )}
@@ -223,7 +242,7 @@ export default function PurchaseOrders() {
                                   <td className="py-2 pr-4 text-right">{i.quantityOrdered}</td>
                                   <td className="py-2 pr-4 text-right font-medium text-blue-700">{i.quantityReceived}</td>
                                   <td className="py-2 pr-4 text-right">${i.unitPrice?.toFixed(2)}</td>
-                                  <td className="py-2 text-right">${i.subtotal?.toFixed(2)}</td>
+                                  <td className="py-2 text-right">${(Number(i.unitPrice) * i.quantityOrdered).toFixed(2)}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -310,7 +329,7 @@ export default function PurchaseOrders() {
               className="w-full border border-gray-300 rounded-lg px-3 py-2 mb-4 h-24" />
             <div className="flex gap-3">
               <button onClick={() => setShowRejectModal(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={() => handleAction(selectedPo.id, 'reject', { reason: rejectReason })} className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700">Reject</button>
+              <button disabled={submitting || !rejectReason.trim()} onClick={() => handleAction(selectedPo.id, 'reject', { reason: rejectReason })} className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 disabled:opacity-50">Reject</button>
             </div>
           </div>
         </div>
@@ -344,9 +363,9 @@ export default function PurchaseOrders() {
             )}
             <div className="flex gap-3 border-t border-gray-200 pt-4">
               <button onClick={() => setShowReceiveModal(false)} className="flex-1 border border-gray-300 text-gray-700 py-2 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={() => {
+              <button disabled={submitting || !Object.values(receiveForm).some(qty => qty > 0)} onClick={() => {
                 const itemsPayload = Object.entries(receiveForm)
-                  .filter(([_, qty]) => qty > 0)
+                  .filter(([, qty]) => qty > 0)
                   .map(([id, qty]) => ({ purchaseOrderItemId: Number(id), quantityReceived: qty }));
                 handleAction(selectedPo.id, 'receive', { items: itemsPayload });
               }} className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">Confirm Receipt</button>

@@ -36,6 +36,14 @@ public class PurchaseOrderService {
 
     @Transactional
     public PurchaseOrder createPurchaseOrder(Long supplierId, Long createdByUserId, List<LineItemRequest> items) {
+        return createPurchaseOrder(supplierId, createdByUserId, items, null);
+    }
+
+    @Transactional
+    public PurchaseOrder createPurchaseOrder(Long supplierId, Long createdByUserId, List<LineItemRequest> items, String notes) {
+        if (notes != null && notes.length() > 500) {
+            throw new IllegalArgumentException("PO notes must be at most 500 characters");
+        }
         Supplier supplier = supplierRepository.findById(supplierId)
                 .orElseThrow(() -> new IllegalArgumentException("Supplier not found"));
 
@@ -64,6 +72,7 @@ public class PurchaseOrderService {
         order.setSupplier(supplier);
         order.setCreatedBy(createdBy);
         order.setStatus("DRAFT");
+        order.setNotes(notes);
         PurchaseOrder savedOrder = purchaseOrderRepository.save(order);
 
         for (LineItemRequest item : items) {

@@ -38,7 +38,7 @@ public class PurchaseOrderController {
                 .orElseThrow(() -> new IllegalArgumentException("Authenticated user not found"));
 
         PurchaseOrder created = purchaseOrderService.createPurchaseOrder(
-                request.supplierId(), currentUser.getId(), request.items());
+                request.supplierId(), currentUser.getId(), request.items(), request.notes());
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
@@ -107,5 +107,5 @@ public class PurchaseOrderController {
 
     public record CreatePurchaseOrderRequest(
             Long supplierId,
-            List<PurchaseOrderService.LineItemRequest> items) {}
+            List<PurchaseOrderService.LineItemRequest> items, String notes) {}
 }

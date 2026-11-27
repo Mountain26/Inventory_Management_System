@@ -12,15 +12,12 @@ public class SupplierService {
 
     private final SupplierRepository supplierRepository;
     private final com.inventory.repository.PurchaseOrderRepository purchaseOrderRepository;
-    private final com.inventory.repository.PurchaseOrderItemRepository purchaseOrderItemRepository;
 
     @Autowired
     public SupplierService(SupplierRepository supplierRepository,
-                           com.inventory.repository.PurchaseOrderRepository purchaseOrderRepository,
-                           com.inventory.repository.PurchaseOrderItemRepository purchaseOrderItemRepository) {
+                           com.inventory.repository.PurchaseOrderRepository purchaseOrderRepository) {
         this.supplierRepository = supplierRepository;
         this.purchaseOrderRepository = purchaseOrderRepository;
-        this.purchaseOrderItemRepository = purchaseOrderItemRepository;
     }
 
     public Supplier createSupplier(Supplier supplier) {
@@ -57,22 +54,18 @@ public class SupplierService {
         return purchaseOrderRepository.findBySupplierId(supplierId);
     }
 
+    @org.springframework.transaction.annotation.Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
     public java.util.List<SupplierReportEntry> getSupplierReport() {
-        return supplierRepository.findAllActiveSorted().stream()
-                .map(s -> {
-                    java.util.List<com.inventory.entity.PurchaseOrder> orders =
-                            purchaseOrderRepository.findBySupplierId(s.getId());
-                    long orderCount = orders.size();
-                    java.math.BigDecimal totalSpend = orders.stream()
-                            .flatMap(o -> purchaseOrderItemRepository.findByPurchaseOrderId(o.getId()).stream())
-                            .map(i -> i.getUnitPrice() != null ?
-                                    i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantityOrdered()))
-                                    : java.math.BigDecimal.ZERO)
-                            .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
-                    return new SupplierReportEntry(s, orderCount, totalSpend);
-                })
-                .collect(java.util.stream.Collectors.toList());
+        var totals = supplierRepository.findReportTotals().stream().collect(java.util.stream.Collectors.toMap(
+                com.inventory.repository.SupplierRepository.SupplierTotals::getSupplierId, value -> value));
+        return supplierRepository.findAllActiveSorted().stream().map(s -> {
+            var total = totals.get(s.getId());
+            return new SupplierReportEntry(s, total == null ? 0 : total.getApprovedOrderCount(),
+                    total == null ? java.math.BigDecimal.ZERO : total.getOrderedValue(),
+                    total == null ? java.math.BigDecimal.ZERO : total.getReceivedValue());
+        }).toList();
     }
 
-    public record SupplierReportEntry(com.inventory.entity.Supplier supplier, long orderCount, java.math.BigDecimal totalSpend) {}
+    public record SupplierReportEntry(com.inventory.entity.Supplier supplier, long approvedOrderCount,
+                                      java.math.BigDecimal orderedValue, java.math.BigDecimal receivedValue) {}
 }

@@ -8,19 +8,15 @@ export default function SupplierReport() {
   const [expandedId, setExpandedId] = useState(null);
   const [supplierHistory, setSupplierHistory] = useState({});
 
-  const fetchReport = async () => {
-    setLoading(true);
-    try {
-      const res = await axiosClient.get('/suppliers/report');
-      setReport(res.data);
-    } catch (e) {
-      setError('Failed to load supplier report');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchReport(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([axiosClient.get('/suppliers/report')]).then(res => {
+      if (!active) return;
+      setReport(res[0].data);
+    }).catch(() => { if (active) setError('Failed to load supplier report'); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
 
   const fetchHistory = async (id) => {
     if (supplierHistory[id]) return;
@@ -39,9 +35,10 @@ export default function SupplierReport() {
   };
 
   const handleExportCSV = () => {
-    let csv = 'Supplier Name,Total Orders,Total Spend\n';
+    let csv = 'Supplier Name,Approved Orders,Ordered Value,Received Value\n';
     report.forEach(r => {
-      csv += `"${r.supplier?.name || ''}",${r.orderCount},${r.totalSpend}\n`;
+      const name = (r.supplier?.name || '').replace(/"/g, '""').replace(/^[=+@-]/, "'$&");
+      csv += `"${name}",${r.approvedOrderCount},${r.orderedValue},${r.receivedValue}\n`;
     });
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -72,27 +69,29 @@ export default function SupplierReport() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Supplier Name</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total Orders</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total Spend</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Approved Orders</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ordered Value</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Received Value</th>
                 <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Details</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {report.map(r => (
-                <React.Fragment key={r.supplier?.id || Math.random()}>
+                <React.Fragment key={r.supplier.id}>
                   <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => handleExpand(r.supplier?.id)}>
                     <td className="px-4 py-3 text-sm font-medium text-gray-800">{r.supplier?.name}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{r.orderCount}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{r.approvedOrderCount}</td>
                     <td className="px-4 py-3 text-sm font-medium text-gray-800">
-                      ${r.totalSpend?.toFixed(2)}
+                      ${r.orderedValue?.toFixed(2)}
                     </td>
+                    <td className="px-4 py-3 text-sm font-medium text-gray-800">${r.receivedValue?.toFixed(2)}</td>
                     <td className="px-4 py-3 text-right text-blue-600 text-sm">
                       {expandedId === r.supplier?.id ? '▲ Hide' : '▼ View'}
                     </td>
                   </tr>
                   {expandedId === r.supplier?.id && (
                     <tr className="bg-blue-50">
-                      <td colSpan={4} className="px-4 py-4">
+                      <td colSpan={5} className="px-4 py-4">
                         <p className="text-sm font-semibold text-gray-700 mb-2">PO History for {r.supplier?.name}</p>
                         {!supplierHistory[r.supplier?.id] ? (
                           <p className="text-gray-400 text-sm">Loading...</p>
@@ -105,7 +104,6 @@ export default function SupplierReport() {
                                 <th className="py-2 pr-4">PO ID</th>
                                 <th className="py-2 pr-4">Date</th>
                                 <th className="py-2 pr-4">Status</th>
-                                <th className="py-2">Total Amount</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
@@ -114,7 +112,6 @@ export default function SupplierReport() {
                                   <td className="py-2 pr-4 font-mono text-xs">{po.id}</td>
                                   <td className="py-2 pr-4 text-gray-600">{new Date(po.createdAt).toLocaleDateString()}</td>
                                   <td className="py-2 pr-4 text-gray-800 font-medium">{po.status}</td>
-                                  <td className="py-2 font-medium">${po.totalAmount?.toFixed(2)}</td>
                                 </tr>
                               ))}
                             </tbody>
@@ -127,7 +124,7 @@ export default function SupplierReport() {
               ))}
               {report.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-4 text-center text-gray-500">No report data found.</td>
+                  <td colSpan={5} className="px-4 py-4 text-center text-gray-500">No report data found.</td>
                 </tr>
               )}
             </tbody>

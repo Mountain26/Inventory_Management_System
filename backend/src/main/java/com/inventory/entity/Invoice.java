@@ -52,6 +52,11 @@ public class Invoice {
     @Column(nullable = false)
     private Integer version = 0;
 
+    @Transient
+    public BigDecimal getBalanceAmount() {
+        return totalAmount == null ? BigDecimal.ZERO : totalAmount.subtract(paidAmount == null ? BigDecimal.ZERO : paidAmount);
+    }
+
     @PrePersist
     protected void onCreate() { createdAt = LocalDateTime.now(); updatedAt = LocalDateTime.now(); }
 

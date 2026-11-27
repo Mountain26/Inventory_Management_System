@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import axiosClient from '../api/axiosClient';
 
 export default function SupplierPortal() {
@@ -9,15 +9,14 @@ export default function SupplierPortal() {
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-      try {
+        try {
         const [poRes, invRes] = await Promise.all([
           axiosClient.get('/portal/supplier/purchase-orders'),
           axiosClient.get('/portal/supplier/invoices')
         ]);
         setPurchaseOrders(poRes.data);
         setInvoices(invRes.data);
-      } catch (err) {
+      } catch {
         setError('Failed to load portal data');
       } finally {
         setLoading(false);
@@ -72,7 +71,6 @@ export default function SupplierPortal() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">PO ID</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Status</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -83,10 +81,9 @@ export default function SupplierPortal() {
                       <td className="px-4 py-3 text-sm">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPoStatusBadge(po.status)}`}>{po.status.replace('_', ' ')}</span>
                       </td>
-                      <td className="px-4 py-3 text-sm font-medium text-right">${po.totalAmount?.toFixed(2)}</td>
                     </tr>
                   ))}
-                  {purchaseOrders.length === 0 && <tr><td colSpan={4} className="px-4 py-6 text-center text-gray-500">No purchase orders found.</td></tr>}
+                  {purchaseOrders.length === 0 && <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">No purchase orders found.</td></tr>}
                 </tbody>
               </table>
             </div>

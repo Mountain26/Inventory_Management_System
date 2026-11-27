@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const axiosClient = axios.create({
-  baseURL: 'http://localhost:8080/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
+  timeout: 15000,
 });
 
 axiosClient.interceptors.request.use((config) => {
@@ -10,6 +11,13 @@ axiosClient.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
+});
+
+axiosClient.interceptors.response.use(response => response, error => {
+  if (error.response?.status === 401 && !error.config?.url?.startsWith('/auth/')) {
+    window.dispatchEvent(new Event('mountain:unauthorized'));
+  }
+  return Promise.reject(error);
 });
 
 export default axiosClient;

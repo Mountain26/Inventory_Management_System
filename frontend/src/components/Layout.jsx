@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth';
 
 export default function Layout({ children }) {
   const { logout, userEmail, userRole } = useAuth();
@@ -24,7 +24,7 @@ export default function Layout({ children }) {
     <div className="flex h-screen bg-gray-50 font-sans">
       <aside className="w-64 bg-gray-800 text-white flex flex-col shrink-0">
         <div className="p-4 text-2xl font-bold border-b border-gray-700">
-          Inventory MS
+          MOUNTAIN
         </div>
         <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {(isAdminOrManager || isStaff) && (
@@ -69,7 +69,7 @@ export default function Layout({ children }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-8">
+      <main className="min-w-0 flex-1 overflow-auto p-4 sm:p-8">
         {children}
       </main>
     </div>

@@ -1,148 +1,94 @@
-# Inventory Management System
+﻿# MOUNTAIN
 
-A full-stack inventory management system built with **Spring Boot**, **Spring Security (JWT)**, **MySQL**, and **React** — designed and built from requirements through deployment as a demonstration of backend architecture, secure API design, and full-stack integration.
+Hệ thống quản lý mua hàng và vận hành kho, được phát triển tiếp thành dự án cá nhân phục vụ portfolio **Business Analyst**. Trọng tâm là quy trình PO, nhận hàng từng phần, kiểm soát nhập xuất tồn, phân quyền và tiêu chí nghiệm thu có thể kiểm chứng.
 
-> This is a V1, deliberately scoped-down system. See [Design Decisions](#design-decisions) and [Roadmap](#roadmap--v2) for what was intentionally left out and why.
+MOUNTAIN phát triển từ nền tảng mã nguồn mở MIT; thông báo tác giả gốc được giữ trong [LICENSE](LICENSE). Phần cải tiến và những giới hạn còn lại được mô tả trong [báo cáo rà soát](docs/AUDIT.md).
 
-## Screenshots
+## Tài liệu BA
 
-![Login](docs/image.png)
+- [Phân tích nghiệp vụ](docs/BUSINESS-ANALYSIS.md): bối cảnh, phạm vi, ma trận quyền, 20 quy tắc nghiệp vụ, luồng trạng thái, use cases và từ điển dữ liệu.
+- [UAT và truy vết yêu cầu](docs/UAT.md): 29 kịch bản, kết quả mong đợi và kiểm thử tương ứng.
+- [Báo cáo rà soát](docs/AUDIT.md): lỗi đã sửa, kiểm chứng và backlog theo mức ưu tiên.
+- [Hướng dẫn học và phỏng vấn](docs/LEARNING-GUIDE.md): lộ trình thực hành, luồng code và câu hỏi cần giải thích được.
 
-![Products](docs/image-1.png)
+Bối cảnh doanh nghiệp là giả định cho portfolio. Không có số liệu hiệu quả vận hành hoặc nghiệm thu khách hàng được tự gán cho dự án.
 
----
+## Chức năng hiện tại
 
-## Table of Contents
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Architecture](#architecture)
-- [Key Design Decisions](#design-decisions)
-- [Getting Started](#getting-started)
-- [API Overview](#api-overview)
-- [Security](#security)
-- [Roadmap / V2](#roadmap--v2)
+- Đăng nhập JWT, quyền Admin / Manager / Staff và hai role portal; đăng ký công khai mặc định tắt.
+- Quản lý danh mục, sản phẩm, nhà cung cấp; sản phẩm mới bắt đầu với tồn 0.
+- PO: DRAFT → PENDING_APPROVAL → APPROVED → PARTIALLY_RECEIVED → RECEIVED; người tạo không tự duyệt.
+- Nhập xuất tại kho mặc định; kiểm tra cả tổng tồn và tồn tại kho thực hiện.
+- Chuyển kho PENDING → COMPLETED hoặc CANCELLED; chưa giữ chỗ hàng và chưa mô hình hàng đang vận chuyển.
+- Mất/hỏng, điều chỉnh có dấu và sửa sai có tham chiếu; chỉ tác động tồn khi người khác duyệt.
+- Hóa đơn, số dư và thanh toán trong phạm vi đơn giản; chặn trả vượt số còn lại.
+- Báo cáo NCC tách giá trị đặt đã duyệt và giá trị thực nhận, không gọi hai chỉ tiêu này là số tiền đã thanh toán.
+- Portal nhà cung cấp, danh mục khách hàng, cảnh báo tồn thấp và quét barcode bằng camera.
 
----
+Tổng tồn sản phẩm phải bằng tổng tồn tất cả kho. Luồng cập nhật và sổ giao dịch dùng chung transaction; optimistic version chặn ghi đè đồng thời. HTTP 409 yêu cầu tải lại và xem kết quả trước khi thử tiếp.
 
-## Features
+## Công nghệ
 
-- **JWT-based authentication** with role-based access control (Admin / Manager / Staff)
-- **Category & Product management** with soft delete, low-stock highlighting, and category relationships
-- **Supplier management**
-- **Purchase Orders** with multi-line-item creation in a single request
-- **Inventory transactions** (Stock In / Stock Out) with:
-  - Optimistic locking to prevent race conditions on concurrent stock updates
-  - Full transaction history per product
-  - An approval workflow for exceptional transactions (damaged/lost/adjustment/correction) — normal Stock In/Out auto-completes, sensitive changes require Manager approval
-- **User activity log** — a separate, append-only audit trail of user actions (logins, record changes), distinct from the inventory transaction log
-- A working React frontend: login, protected routing, and functional CRUD screens wired to the live API
+Java 21, Spring Boot 3.3, Spring Security, JPA/Hibernate, MySQL 8, Flyway, Maven; React 19, Vite 8, Axios, Tailwind; JUnit, Mockito, H2, Testcontainers và Vitest. Node.js 22 được dùng cho build và CI.
 
----
+## Chạy với Docker
 
-## Tech Stack
+1. Sao chép `.env.example` thành `.env`. Thay các mật khẩu mẫu và đặt JWT_SECRET ngẫu nhiên tối thiểu 64 ký tự.
+2. Ở lần đầu trên database trống, đặt APP_BOOTSTRAP_ENABLED=true và điền BOOTSTRAP_ADMIN_EMAIL, BOOTSTRAP_ADMIN_PASSWORD của bạn.
+3. Chạy `docker compose up --build`. Frontend tại http://localhost, API tại http://localhost:8080, health tại `/actuator/health`.
+4. Sau khi tạo Admin thành công, đặt APP_BOOTSTRAP_ENABLED=false rồi chạy `docker compose up -d backend` trước những lần khởi động tiếp theo. Bootstrap không ghi đè tài khoản hoặc mật khẩu đã có.
+5. Đăng nhập Admin và tạo một Manager khác qua POST `/api/auth/register-privileged`. Cần ít nhất hai người dùng độc lập để tạo và duyệt chứng từ.
 
-**Backend:** Java 21, Spring Boot 3, Spring Security, Spring Data JPA / Hibernate, MySQL, Maven
-**Frontend:** React (Vite), React Router, Axios
-**Auth:** JWT (JJWT library), BCrypt password hashing
+Ví dụ body tạo Manager, gửi bằng token Admin:
 
----
-
-## Architecture
-
-```
-Category (1) ──< (many) Product
-Product  (1) ──< (many) InventoryTransaction
-Product  (1) ──< (many) PurchaseOrderItem
-Supplier (1) ──< (many) PurchaseOrder
-PurchaseOrder (1) ──< (many) PurchaseOrderItem
-PurchaseOrder (1) ──< (many) InventoryTransaction   (nullable reference)
-User     (1) ──< (many) InventoryTransaction, PurchaseOrder, UserActivityLog
+```json
+{
+  "fullName": "Warehouse Manager",
+  "email": "manager@mountain.local",
+  "password": "replace-with-your-own-password",
+  "role": "MANAGER"
+}
 ```
 
-**Layered backend structure**, one clear responsibility per layer:
-```
-Controller → Service → Repository → Entity
-```
-Each module (Category, Product, Supplier, PurchaseOrder, InventoryTransaction, UserActivityLog) follows this same shape — separate, explicit service classes per entity rather than a generic base repository/service pattern, prioritizing readability over DRY abstraction for a project at this stage.
+Flyway tạo schema từ V1 trên database trống; Hibernate chỉ validate. Với database cũ đã có schema hoặc Flyway history, đọc phần nâng cấp trong [AUDIT.md](docs/AUDIT.md) trước khi chạy.
 
----
+## Chạy phát triển cục bộ
 
-## Key Design Decisions
+Dùng MySQL 8.0.16 trở lên và tạo database `inventory_management_system` cùng user có quyền trên database đó. Khai báo SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, SPRING_DATASOURCE_PASSWORD và JWT_SECRET trong môi trường chạy backend. Spring Boot không tự đọc file `.env` khi chạy Maven trực tiếp.
 
-A few decisions worth calling out, since they came from deliberate reasoning rather than defaults:
-
-- **Optimistic locking (`@Version`) over pessimistic locking** for stock updates. Conflicting simultaneous writes to the same product are the rare case, not the common one — optimistic locking avoids holding row locks during normal, high-frequency operations, and only pays a cost (retry) when a genuine conflict occurs.
-- **`Product.currentQuantity` is denormalized** (not computed by summing transaction history on every read) for fast dashboard/report reads. The trade-off — a source-of-truth duplication risk — is mitigated by wrapping every stock-changing operation in a single `@Transactional` boundary, so the transaction log and the product quantity always update together or not at all.
-- **`InventoryTransaction` is one unified table with a `type` discriminator** (STOCK_IN / STOCK_OUT / DAMAGED / LOST / ADJUSTMENT / CORRECTION), not split into separate tables per type — since "show full history for this product" is a constant, frequent query, and all types share the same core shape.
-- **Corrections are new, linked rows, never edits** to existing transactions — the audit log is genuinely append-only.
-- **Two separate audit logs**, not one: `InventoryTransaction` (what happened to stock — business data) and `UserActivityLog` (who did what, when — security/accountability data, including actions with no stock impact like a login or a category rename).
-- **Role stored as an enum on `User`**, not a separate `Role` table — roles are a small, fixed, code-defined set for V1; a dedicated table would be justified only if per-user, fine-grained permissions were needed.
-
----
-
-## Getting Started
-
-### Prerequisites
-- Java 21 (JDK)
-- Maven
-- MySQL 8+
-- Node.js + npm
-
-### Backend
-```bash
+```text
 cd backend
-# Copy the template and fill in your local DB password / JWT secret
-cp src/main/resources/application.properties.example src/main/resources/application.properties
 mvn spring-boot:run
 ```
-The backend runs on `http://localhost:8080`. On first run, Hibernate creates the schema automatically (`ddl-auto=update`).
 
-### Frontend
-```bash
+Tạo Admin lần đầu bằng cùng các biến bootstrap ở phần trên, sau đó tắt bootstrap. Không cần sửa file cấu hình chứa mật khẩu trong source.
+
+```text
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
-The frontend runs on `http://localhost:5173`.
 
-### First login
-Register a Staff account via `POST /api/auth/register`, or create an Admin directly in the database and use `/api/auth/login`. Only an existing Admin can create Manager/Admin accounts (via `/api/auth/register-privileged`) — public registration is deliberately locked to the lowest-privilege role.
+Frontend phát triển tại http://localhost:5173; Vite chuyển tiếp `/api` tới localhost:8080. Bản Docker dùng Nginx cùng origin. Có thể đặt VITE_API_BASE_URL nếu cần build cho API khác.
 
----
+## Kiểm chứng
 
-## API Overview
+```text
+cd backend
+mvn test -B
 
-| Area | Base path | Notes |
-|---|---|---|
-| Auth | `/api/auth` | `register`, `login`, `register-privileged` (Admin only) |
-| Categories | `/api/categories` | View: all roles · Write: Admin/Manager |
-| Products | `/api/products` | View: all roles · Write: Admin/Manager |
-| Suppliers | `/api/suppliers` | View: all roles · Write: Admin/Manager |
-| Purchase Orders | `/api/purchase-orders` | Create: Admin/Manager |
-| Inventory Transactions | `/api/inventory-transactions` | Stock In/Out: all roles · Approve/Reject: Admin/Manager |
-| Activity Logs | `/api/activity-logs` | Admin only |
+cd ../frontend
+npm test
+npm run lint
+npm run build
+```
 
----
+Kết quả trên máy rà soát ngày 27/11/2026: backend **68 bài qua**, frontend **18 bài qua**, lint và build qua. Backend có kiểm thử tích hợp H2 với transaction thật, gồm rollback, báo cáo NCC và xuất kho đồng thời. **4 bài MySQL/Testcontainers bị bỏ qua do Docker chưa sẵn sàng**; chưa xác nhận toàn bộ đường khởi động MySQL và Compose.
 
-## Security
+## Demo nghiệp vụ
 
-- Passwords hashed with **BCrypt**, never stored or returned in plain text
-- **Stateless JWT authentication** — no server-side sessions; every request authenticates independently via its token
-- **Method-level authorization** (`@PreAuthorize`) enforcing role-based access per endpoint, matching the documented permission model
-- **CORS** explicitly scoped to the known frontend origin
-- Centralized exception handling (`@RestControllerAdvice`) — no raw stack traces or leaked internals in API responses
+Tạo sản phẩm tồn 0, PO 10 đơn vị giá 10 USD, dùng người khác duyệt. Nhận 4 rồi nhận 6 và kiểm tra cả PO, tổng tồn, kho MAIN và lịch sử STOCK_IN. Tiếp theo chuyển hàng sang kho phụ, thử xuất quá số còn ở MAIN và tạo yêu cầu LOST. Chứng minh yêu cầu chưa đổi tồn cho tới khi được duyệt. Chạy các ca lỗi trong UAT và giải thích vì sao dữ liệu không được cập nhật một phần.
 
----
+## Phạm vi tiếp theo
 
-## Roadmap / V2
-
-Deliberately out of scope for V1, to ship a complete, polished system on a deadline rather than an unfinished ambitious one:
-
-- Multi-warehouse support and inter-warehouse transfers
-- Partial PO receiving, PO approval workflow, invoice management
-- Purchase history by supplier (dedicated report)
-- Email / SMS / push notifications for low stock
-- Barcode scanning (the `barcode` field already exists on `Product`, schema-ready)
-- Supplier/customer login portal
-- Automated Docker deployment and CI pipeline
-- Test coverage (unit + integration)
+Ưu tiên idempotency, nhật ký hành động đầy đủ, sổ từng lần thanh toán, thời điểm ghi sổ/warehouse của giao dịch, DTO cho portal và phân trang server. MOUNTAIN hiện là hệ thống học tập và demo có kiểm soát; chưa phải phần mềm kế toán hoặc ERP triển khai thực tế.

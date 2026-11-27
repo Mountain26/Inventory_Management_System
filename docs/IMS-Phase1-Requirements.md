@@ -1,5 +1,7 @@
 # Inventory Management System — Phase 1: Business & Software Requirements
 
+> Tài liệu nền V1 được giữ để tham khảo nguồn yêu cầu ban đầu. Phạm vi và quy tắc MOUNTAIN hiện tại nằm trong [BUSINESS-ANALYSIS.md](BUSINESS-ANALYSIS.md); không dùng danh sách out-of-scope bên dưới để mô tả phiên bản đang chạy.
+
 ## 1. Overview
 
 A single-warehouse inventory management system for internal company use, tracking
